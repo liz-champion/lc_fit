@@ -25,7 +25,7 @@ def sample_gaussian(llim, rlim, mu, sigma, n):
     return truncnorm.rvs(llim, rlim, loc=mu, scale=sigma, size=n)
    
 # the parameters FIXME: should this be more flexible?
-ordered_parameters = ["mej_dyn", "vej_dyn", "mej_wind", "vej_wind", "theta", "dist"]
+ordered_parameters = ["mej_dyn", "vej_dyn", "mej_wind", "vej_wind", "theta"]
 
 # parameter limits
 limits = {
@@ -33,8 +33,7 @@ limits = {
         "vej_dyn":[0.05, 0.3],
         "mej_wind":[0.001, 0.1],
         "vej_wind":[0.05, 0.3],
-        "theta":[0., 90.],
-        "dist":[1., 1000.]
+        "theta":[0., 90.]
 }
 
 # if the user specified different limits, change them accordingly
@@ -48,8 +47,7 @@ priors = {
         "vej_dyn":lambda n: sample_uniform(*limits["vej_dyn"], n),
         "mej_wind":lambda n: sample_log_uniform(*limits["mej_wind"], n),
         "vej_wind":lambda n: sample_uniform(*limits["vej_wind"], n),
-        "theta":lambda n: sample_uniform(*limits["theta"], n),
-        "dist":lambda n: sample_uniform(*limits["dist"], n)
+        "theta":lambda n: sample_uniform(*limits["theta"], n)
 }
 
 # deal with possible fixed parameters

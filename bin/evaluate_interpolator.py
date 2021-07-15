@@ -12,8 +12,9 @@ from scipy.linalg import cholesky, cho_solve
 parser = argparse.ArgumentParser(description="Evaluate a single interpolator, specified by `--interp-angle` and `--interp-time`, on the parameters given in `--parameter-file`")
 parser.add_argument("--interp-angle", help="Which angle (of 0, 30, 45, 60, 75, 90) to evaluate")
 parser.add_argument("--interp-time", help="Which time (of the set values at which the interpolators are trained) to use")
-parser.add_argument("--parameter-file", help="Name of file containing parameters to evaluate")
-parser.add_argument("--output-file", help="File to write magnitudes to")
+parser.add_argument("--grid-file", help="Filename for the parameter grid")
+parser.add_argument("--index-file", help="Name of file containing the indices in the grid that correspond to `--interp-angle`")
+parser.add_argument("--output-directory", help="File to write magnitudes to")
 parser.add_argument("--band", help="Band to evaluate")
 args = parser.parse_args()
 
@@ -84,16 +85,17 @@ def _log_lums_to_mags(log_lums):
     mags = -48.6 - 2.5 * log_flux
     return mags
 
-# load the parameters
-params_temp = np.atleast_2d(np.loadtxt(args.parameter_file))
-if params_temp.size == 0:
+# load the grid indices, exiting if it has size 0
+indices = np.loadtxt(args.index_file).astype(int)
+if indices.size == 0:
     exit()
 
-# store the first column of the array, which contains the parameter indices and should be saved in the output
-indices = params_temp[:,0]
-params = np.empty((params_temp.shape[0], 5))
-params[:,:4] = params_temp[:,1:]
+# load the grid
+grid = np.loadtxt(args.grid_file)
+params = np.empty(grid.shape)
+params[:,:4] = grid[:,:4] # take everything but angle
 params[:,4] = wavelengths[args.band]
+params = params[indices]
 
 # location of trained interpolators
 interp_loc = os.environ["INTERP_LOC"]
@@ -102,17 +104,16 @@ if interp_loc[-1] != "/":
 interp_loc += "surrogate_data/2021_Wollaeger_TorusPeanut/"
 
 # load the interpolator
-interp_name = interp_loc + "theta" + ("00" if args.interp_angle == "0" else args.angle) + "deg/t_" + args.interp_time + "_days/model"
+interp_name = interp_loc + "theta" + ("00" if args.interp_angle == "0" else args.interp_angle) + "deg/t_" + args.interp_time + "_days/model"
 model = _load_gp(interp_name)
 
 # evaluate the interpolator
 mags, mags_err = _model_predict(model, params)
 
 # fill an array with the results
-output_array = np.empty((params.shape[0], 3))
-output_array[:,0] = indices
-output_array[:,1] = mags
-output_array[:,2] = mags_err
+output_array = np.empty((params.shape[0], 2))
+output_array[:,0] = mags
+output_array[:,1] = mags_err
 
 # write the output to a file
-np.savetxt(args.output_file, output_array)
+np.savetxt(args.output_directory + ("/" if args.output_directory[-1] != "/" else "") + "eval_interp_{0}_{1}_{2}.dat".format(args.interp_time, args.interp_angle, args.band), output_array)
