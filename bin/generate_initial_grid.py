@@ -13,7 +13,20 @@ parser.add_argument("--output-file", help="Filename to save grid to")
 args = parser.parse_args()
 
 #
-# functions to draw samples from the possible priors
+# Prior functions
+#
+
+def uniform(llim, rlim, x):
+    return 1. / (rlim - llim)
+
+def log_uniform(llim, rlim, x):
+    return loguniform.pdf(x, llim, rlim)
+
+def gaussian(llim, rlim, mu, sigma, x):
+    return truncnorm.pdf(x, llim, rlim, loc=mu, scale=sigma)
+   
+#
+# Functions to draw samples from the priors
 #
 def sample_uniform(llim, rlim, n):
     return np.random.uniform(llim, rlim, size=n)
@@ -23,11 +36,11 @@ def sample_log_uniform(llim, rlim, n):
 
 def sample_gaussian(llim, rlim, mu, sigma, n):
     return truncnorm.rvs(llim, rlim, loc=mu, scale=sigma, size=n)
-   
+
 # the parameters FIXME: should this be more flexible?
 ordered_parameters = ["mej_dyn", "vej_dyn", "mej_wind", "vej_wind", "theta"]
 
-# parameter limits
+# Parameter limits
 limits = {
         "mej_dyn":[0.001, 0.1],
         "vej_dyn":[0.05, 0.3],
@@ -36,13 +49,22 @@ limits = {
         "theta":[0., 90.]
 }
 
-# if the user specified different limits, change them accordingly
+# Pf the user specified different limits, change them accordingly
 if args.set_limit is not None:
     for [_parameter, _llim, _rlim] in args.set_limit:
         limits[_parameter] = [float(_llim), float(_rlim)]
 
-# specify each parameter's prior
-priors = {
+# Specify each parameter's prior
+prior_functions = {
+        "mej_dyn":lambda n: log_uniform(*limits["mej_dyn"], n),
+        "vej_dyn":lambda n: uniform(*limits["vej_dyn"], n),
+        "mej_wind":lambda n: log_uniform(*limits["mej_wind"], n),
+        "vej_wind":lambda n: uniform(*limits["vej_wind"], n),
+        "theta":lambda n: uniform(*limits["theta"], n)
+}
+
+# Specify each parameter's prior sampling function
+prior_sampling_functions = {
         "mej_dyn":lambda n: sample_log_uniform(*limits["mej_dyn"], n),
         "vej_dyn":lambda n: sample_uniform(*limits["vej_dyn"], n),
         "mej_wind":lambda n: sample_log_uniform(*limits["mej_wind"], n),
@@ -50,16 +72,30 @@ priors = {
         "theta":lambda n: sample_uniform(*limits["theta"], n)
 }
 
-# deal with possible fixed parameters
+# Deal with possible fixed parameters
 fixed_parameters = {}
 if args.fixed_parameter is not None:
     for [_parameter, _val] in args.fixed_parameter:
         fixed_parameters[_parameter] = float(_val)
 
-# do the sampling
-grid = np.empty((args.npts, len(ordered_parameters)))
-for i, _parameter in enumerate(ordered_parameters):
-    grid[:,i] = priors[_parameter](args.npts) if _parameter not in fixed_parameters.keys() else fixed_parameters[_parameter]
+#
+# Generate the grid
+#
 
-# save the grid
-np.savetxt(args.output_file, grid, header=" ".join(ordered_parameters))
+grid = np.empty((args.npts, len(ordered_parameters) + 3))
+
+# The first column, for lnL, gets filled in later (by generate_posterior_samples.py), so for now make it NaN
+grid[:,0] = np.nan
+
+# The second and third columns are the prior and sampling prior, respectively, which are the same for the initial grid.
+# The joint prior is the product of all the separate priors, so we'll set them to 1 now and multiply them by each parameter's prior in the loop.
+grid[:,1] = 1.
+
+# Do the sampling and compute priors
+for i, _parameter in enumerate(ordered_parameters):
+    grid[:,i + 3] = prior_sampling_functions[_parameter](args.npts) if _parameter not in fixed_parameters.keys() else fixed_parameters[_parameter]
+    grid[:,1] *= prior_functions[_parameter](grid[:,i + 3])
+grid[:,2] = grid[:,1]
+
+# Save the grid
+np.savetxt(args.output_file, grid, header=("lnL p ps " + " ".join(ordered_parameters)))

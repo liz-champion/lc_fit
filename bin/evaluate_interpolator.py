@@ -92,8 +92,8 @@ if indices.size == 0:
 
 # load the grid
 grid = np.loadtxt(args.grid_file)
-params = np.empty(grid.shape)
-params[:,:4] = grid[:,:4] # take everything but angle
+params = np.empty((grid.shape[0], 5))
+params[:,:4] = grid[:,3:7] # take everything but angle
 params[:,4] = wavelengths[args.band]
 params = params[indices]
 

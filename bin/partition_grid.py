@@ -9,10 +9,10 @@ parser.add_argument("--output-directory", help="Directory to save partitioned gr
 args = parser.parse_args()
 
 grid = np.loadtxt(args.grid_file)
-theta = grid[:,4]
+theta = grid[:,-1] # theta is the last column
 
 indices_0 = np.where(theta < 30.)[0]
-indices_30 = np.where(theta < 60.)[0]
+indices_30 = np.where(theta < 45.)[0]
 indices_45 = np.where((30. <= theta) & (theta < 60.))[0]
 indices_60 = np.where((45. <= theta) & (theta < 75.))[0]
 indices_75 = np.where(60. <= theta)[0]

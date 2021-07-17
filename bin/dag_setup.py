@@ -83,11 +83,13 @@ parser = argparse.ArgumentParser(description="Generates Condor .sub and .dag fil
 parser.add_argument("--working-directory", help="Working directory for the PE run")
 parser.add_argument("--evaluate-interpolator-exe", help="Location of `evaluate_interpolator.py`")
 parser.add_argument("--partition-grid-exe", help="Location of `partition_grid.py`")
+parser.add_argument("--compute-posterior-exe", help="Location of `compute_posterior.py`")
 parser.add_argument("--compute-lnL-exe", help="Location of `compute_lnL.py`")
 parser.add_argument("--generate-next-grid-exe", help="Location of `generate_next_grid.py`")
 parser.add_argument("--lc-file", help="Location of JSON file created by `parse_kn_data.py`")
 parser.add_argument("--n-iterations", type=int, default=10, help="Number of sampling iterations")
 parser.add_argument("--bands", nargs="+", help="Bands to use for PE (must be present in the light curve JSON file)")
+parser.add_argument("--distance", type=float, help="Luminosity distance (in Mpc)")
 args = parser.parse_args()
 
 #
@@ -111,8 +113,18 @@ generate_submit_file("eval_interp",
         "--interp-angle $(interp_angle) --interp-time $(interp_time) --band $(band) --grid-file {0}grid_$(iteration).dat --index-file {0}interp_files/indices_$(interp_angle).dat --output-directory {0}interp_files/".format(args.working_directory),
         args.working_directory,
         tag=tag,
-        memory=8,
+        memory=4,
         disk=4)
+
+# compute_posterior.sub
+tag="$(iteration)"
+generate_submit_file("compute_posterior",
+        args.compute_posterior_exe,
+        "--interp-directory {0}interp_files/ --output-file {0}posterior-samples_$(iteration).dat --grid-file {0}grid_$(iteration).dat --lc-file {1} --bands {2} --distance {3}".format(args.working_directory, args.lc_file, " ".join(args.bands), args.distance),
+        args.working_directory,
+        tag=tag,
+        memory=4,
+        disk=2)
 
 #
 # The rest of this script generates the DAG file.
@@ -148,9 +160,9 @@ child_parent_list = []
 with open(dag_fname, "w") as fp:
     for iteration in range(args.n_iterations):
         #
-        # First DAG node in each iteration: partitioning the grid
+        # DAG node for partitioning the grid by viewing angle
         #
-        fp.write("JOB partition_grid_{0} {1}\n".format(iteration, "partition_grid.sub"))
+        fp.write("JOB partition_grid_{0} partition_grid.sub\n".format(iteration))
         fp.write("VARS partition_grid_{0} iteration=\"{0}\"\n".format(iteration))
         #
         # DAG nodes to evaluate every interpolator that is needed
@@ -158,9 +170,17 @@ with open(dag_fname, "w") as fp:
         interp_job_list = []
         for (interp_time, interp_angle, band) in interpolator_args_set:
             tag = "{0}_{1}_{2}".format(interp_time, interp_angle, band)
-            fp.write("JOB eval_interp_{0}_{1} {2}\n".format(tag, iteration, "eval_interp.sub"))
-            fp.write("VARS eval_interp_{0}_{1} interp_time=\"{2}\" interp_angle=\"{3}\" band=\"{4}\" iteration=\"{5}\"\n".format(tag, iteration, interp_time, interp_angle, band, iteration))
+            fp.write("JOB eval_interp_{0}_{1} eval_interp.sub\n".format(tag, iteration))
+            fp.write("VARS eval_interp_{0}_{1} interp_time=\"{2}\" interp_angle=\"{3}\" band=\"{4}\" iteration=\"{1}\"\n".format(tag, iteration, interp_time, interp_angle, band))
             interp_job_list.append("eval_interp_{0}_{1}".format(tag, iteration))
         for job in interp_job_list:
-            child_parent_list.append("PARENT {0} CHILD {1}".format("partition_grid_{0}".format(iteration), job))
+            child_parent_list.append("PARENT partition_grid_{0} CHILD {1}".format(iteration, job))
+        #
+        # DAG node to compute the posterior
+        #
+        fp.write("JOB compute_posterior_{0} compute_posterior.sub\n".format(iteration))
+        fp.write("VARS compute_posterior_{0} iteration=\"{0}\"\n".format(iteration))
+        for job in interp_job_list:
+            child_parent_list.append("PARENT {0} CHILD compute_posterior_{1}".format(job, iteration))
+
     fp.write("\n".join(child_parent_list))
