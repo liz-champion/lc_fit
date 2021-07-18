@@ -49,7 +49,7 @@ limits = {
         "theta":[0., 90.]
 }
 
-# Pf the user specified different limits, change them accordingly
+# If the user specified different limits, change them accordingly
 if args.set_limit is not None:
     for [_parameter, _llim, _rlim] in args.set_limit:
         limits[_parameter] = [float(_llim), float(_rlim)]
@@ -89,13 +89,13 @@ grid[:,0] = np.nan
 
 # The second and third columns are the prior and sampling prior, respectively, which are the same for the initial grid.
 # The joint prior is the product of all the separate priors, so we'll set them to 1 now and multiply them by each parameter's prior in the loop.
-grid[:,1] = 1.
+grid[:,1] = 0.
 
 # Do the sampling and compute priors
 for i, _parameter in enumerate(ordered_parameters):
     grid[:,i + 3] = prior_sampling_functions[_parameter](args.npts) if _parameter not in fixed_parameters.keys() else fixed_parameters[_parameter]
-    grid[:,1] *= prior_functions[_parameter](grid[:,i + 3])
+    grid[:,1] += np.log(prior_functions[_parameter](grid[:,i + 3]))
 grid[:,2] = grid[:,1]
 
 # Save the grid
-np.savetxt(args.output_file, grid, header=("lnL p ps " + " ".join(ordered_parameters)))
+np.savetxt(args.output_file, grid, header=("ln(L) ln(p) ln(ps) " + " ".join(ordered_parameters)))

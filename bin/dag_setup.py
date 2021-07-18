@@ -90,6 +90,8 @@ parser.add_argument("--lc-file", help="Location of JSON file created by `parse_k
 parser.add_argument("--n-iterations", type=int, default=10, help="Number of sampling iterations")
 parser.add_argument("--bands", nargs="+", help="Bands to use for PE (must be present in the light curve JSON file)")
 parser.add_argument("--distance", type=float, help="Luminosity distance (in Mpc)")
+parser.add_argument("--tempering-exponent-start", type=float, default=1., help="Starting value for tempering exponent")
+parser.add_argument("--tempering-exponent-iterations", type=float, default=5, help="Number of iterations over which to increase the tempering exponent to 1")
 args = parser.parse_args()
 
 #
@@ -117,13 +119,24 @@ generate_submit_file("eval_interp",
         disk=4)
 
 # compute_posterior.sub
-tag="$(iteration)"
+tag = "$(iteration)"
 generate_submit_file("compute_posterior",
         args.compute_posterior_exe,
         "--interp-directory {0}interp_files/ --output-file {0}posterior-samples_$(iteration).dat --grid-file {0}grid_$(iteration).dat --lc-file {1} --bands {2} --distance {3}".format(args.working_directory, args.lc_file, " ".join(args.bands), args.distance),
         args.working_directory,
         tag=tag,
         memory=4,
+        disk=2)
+
+# generate_next_grid.sub
+tag = "$(iteration)"
+generate_submit_file("generate_next_grid",
+        args.generate_next_grid_exe,
+        "--posterior-file {0}posterior-samples_$(iteration).dat --output-file {0}grid_$(next_iteration).dat --tempering-exponent $(exponent)".format(args.working_directory),
+        args.working_directory,
+        tag=tag,
+        memory=4,
+        cpus=2,
         disk=2)
 
 #
@@ -155,6 +168,10 @@ for band in args.bands:
             interpolator_args_set.add((t_before, angle, band))
             interpolator_args_set.add((t_after, angle, band))
 
+# Precompute the tempering exponents
+tempering_exponents = np.ones(args.n_iterations)
+tempering_exponents[:args.tempering_exponent_iterations] = np.logspace(np.log10(args.tempering_exponent_start), 0., args.tempering_exponent_iterations)
+
 dag_fname = args.working_directory + "run.dag"
 child_parent_list = []
 with open(dag_fname, "w") as fp:
@@ -164,6 +181,8 @@ with open(dag_fname, "w") as fp:
         #
         fp.write("JOB partition_grid_{0} partition_grid.sub\n".format(iteration))
         fp.write("VARS partition_grid_{0} iteration=\"{0}\"\n".format(iteration))
+        if iteration > 0:
+            fp.write("PARENT generate_next_grid_{0} CHILD partition_grid_{1}\n".format(iteration - 1, iteration))
         #
         # DAG nodes to evaluate every interpolator that is needed
         #
@@ -182,5 +201,11 @@ with open(dag_fname, "w") as fp:
         fp.write("VARS compute_posterior_{0} iteration=\"{0}\"\n".format(iteration))
         for job in interp_job_list:
             child_parent_list.append("PARENT {0} CHILD compute_posterior_{1}".format(job, iteration))
+        #
+        # DAG node to generate the next grid
+        #
+        fp.write("JOB generate_next_grid_{0} generate_next_grid.sub\n".format(iteration))
+        fp.write("VARS generate_next_grid_{0} iteration=\"{0}\" next_iteration=\"{1}\" exponent=\"{2}\"\n".format(iteration, iteration + 1, tempering_exponents[iteration]))
+        fp.write("PARENT compute_posterior_{0} CHILD generate_next_grid_{0}\n".format(iteration))
 
     fp.write("\n".join(child_parent_list))
