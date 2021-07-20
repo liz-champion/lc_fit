@@ -41,7 +41,7 @@ with open(args.json_file, "r") as fp:
     data = json.load(fp, encoding="UTF-8")[name]["photometry"]
 
 # create empty data arrays
-data_dict = {b:{"time":[], "mag":[], "mag_err":[]} for b in args.bands}
+lc_data = {b:{"time":[], "mag":[], "mag_err":[]} for b in args.bands}
 
 # iterate over the entries in the JSON file
 for entry in data:
@@ -57,9 +57,9 @@ for entry in data:
                 tmax_here = min(tmax, vars(args)["tmax_" + band])
             # add the data point to the output dictionary
             if float(entry["time"]) - t0 < tmax_here:
-                data_dict[band]["time"].append(float(entry["time"]) - t0)
-                data_dict[band]["mag"].append(float(entry["magnitude"]))
-                data_dict[band]["mag_err"].append(float(entry["e_magnitude"]))
+                lc_data[band]["time"].append(float(entry["time"]) - t0)
+                lc_data[band]["mag"].append(float(entry["magnitude"]))
+                lc_data[band]["mag_err"].append(float(entry["e_magnitude"]))
 
 with open(args.output_file, "w") as fp:
-    json.dump(data_dict, fp, indent=4)
+    json.dump(lc_data, fp, indent=4)

@@ -2,11 +2,16 @@
 
 import numpy as np
 import argparse
+import os
 
 parser = argparse.ArgumentParser(description="Takes a grid of parameter samples and splits it based on which angular bin a given sample falls inside of")
 parser.add_argument("--grid-file", help="Name of the full grid file")
 parser.add_argument("--output-directory", help="Directory to save partitioned grid indices to")
 args = parser.parse_args()
+
+# In general this directory will NOT already exist, since this script is the first job in each iteration
+if not os.path.exists(args.output_directory):
+    os.makedirs(args.output_directory)
 
 grid = np.loadtxt(args.grid_file)
 theta = grid[:,-1] # theta is the last column

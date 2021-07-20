@@ -7,7 +7,7 @@ import argparse
 parser = argparse.ArgumentParser(description="Generate initial (random) sample grid")
 parser.add_argument("--fixed-parameter", nargs=2, action="append", help="Fix a parameter's value, e.g. `--fixed-parameter dist 40.0`")
 parser.add_argument("--set-limit", nargs=3, action="append", help="Set a parameter's limits to something other than the default, e.g. `--set-limit mej_dyn 0.01, 0.05`")
-parser.add_argument("--npts", type=int, default=10000, help="Number of points to use in the grid")
+parser.add_argument("--npts", type=int, default=25000, help="Number of points to use in the grid")
 parser.add_argument("--output-file", help="Filename to save grid to")
 # TODO: implement --gaussian-prior option
 args = parser.parse_args()

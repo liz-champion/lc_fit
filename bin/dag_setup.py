@@ -14,6 +14,8 @@ import argparse
 # Objects representing individual condor jobs and the DAG (note: DAG = "Directed Acyclic Graph")
 #
 
+# NOTE: If you change this function, make sure you change it in injection_dag_setup.py too.
+# I know I should import this function from one place, but I wanted all these scripts to be completely independent.
 def generate_submit_file(
         sub_fname, # the name of the submit file to create
         exe, # the executable for the submit file
@@ -92,52 +94,59 @@ parser.add_argument("--bands", nargs="+", help="Bands to use for PE (must be pre
 parser.add_argument("--distance", type=float, help="Luminosity distance (in Mpc)")
 parser.add_argument("--tempering-exponent-start", type=float, default=1., help="Starting value for tempering exponent")
 parser.add_argument("--tempering-exponent-iterations", type=float, default=5, help="Number of iterations over which to increase the tempering exponent to 1")
+parser.add_argument("--npts-per-iteration", type=int, default=25000, help="Number of points to sample per iteration")
 args = parser.parse_args()
 
 #
 # Generate our .sub files
 #
 
+RETRIES = 4 # For now just hard-code a number of retries
+
 # partition_grid.sub
 tag = "$(iteration)"
 generate_submit_file("partition_grid",
         args.partition_grid_exe,
-        "--grid-file {0}grid_$(iteration).dat --output-directory {0}interp_files/".format(args.working_directory),
+        "--grid-file {0}grid_$(iteration).dat --output-directory {0}interp_files/$(iteration)/".format(args.working_directory),
         args.working_directory,
         tag=tag,
         memory=2,
-        disk=2)
+        disk=2,
+        retries=RETRIES)
 
 # eval_interp.sub
 tag = "$(interp_time)_$(interp_angle)_$(band)"
 generate_submit_file("eval_interp",
         args.evaluate_interpolator_exe,
-        "--interp-angle $(interp_angle) --interp-time $(interp_time) --band $(band) --grid-file {0}grid_$(iteration).dat --index-file {0}interp_files/indices_$(interp_angle).dat --output-directory {0}interp_files/".format(args.working_directory),
+        "--interp-angle $(interp_angle) --interp-time $(interp_time) --band $(band) --grid-file {0}grid_$(iteration).dat --index-file {0}interp_files/$(iteration)/indices_$(interp_angle).dat --output-directory {0}interp_files/$(iteration)/".format(args.working_directory),
         args.working_directory,
         tag=tag,
-        memory=4,
-        disk=4)
+        memory=16,
+        disk=4,
+        retries=RETRIES)
 
-# compute_posterior.sub
+# compute_posterior.sub.
 tag = "$(iteration)"
 generate_submit_file("compute_posterior",
         args.compute_posterior_exe,
-        "--interp-directory {0}interp_files/ --output-file {0}posterior-samples_$(iteration).dat --grid-file {0}grid_$(iteration).dat --lc-file {1} --bands {2} --distance {3}".format(args.working_directory, args.lc_file, " ".join(args.bands), args.distance),
+        "--interp-directory {0}interp_files/$(iteration)/ --output-file {0}posterior-samples_$(iteration).dat --grid-file {0}grid_$(iteration).dat --lc-file {1} --bands {2} --distance {3}".format(args.working_directory, args.lc_file, " ".join(args.bands), args.distance),
         args.working_directory,
         tag=tag,
         memory=4,
-        disk=2)
+        disk=2,
+        retries=RETRIES)
 
 # generate_next_grid.sub
 tag = "$(iteration)"
 generate_submit_file("generate_next_grid",
         args.generate_next_grid_exe,
-        "--posterior-file {0}posterior-samples_$(iteration).dat --output-file {0}grid_$(next_iteration).dat --tempering-exponent $(exponent)".format(args.working_directory),
+        "--posterior-file {0}posterior-samples_$(iteration).dat --output-file {0}grid_$(next_iteration).dat --tempering-exponent $(exponent) --npts {1}".format(args.working_directory, args.npts_per_iteration),
         args.working_directory,
         tag=tag,
         memory=4,
         cpus=2,
-        disk=2)
+        disk=2,
+        retries=RETRIES)
 
 #
 # The rest of this script generates the DAG file.
@@ -181,6 +190,7 @@ with open(dag_fname, "w") as fp:
         #
         fp.write("JOB partition_grid_{0} partition_grid.sub\n".format(iteration))
         fp.write("VARS partition_grid_{0} iteration=\"{0}\"\n".format(iteration))
+        fp.write("RETRY partition_grid_{0} {1}\n".format(iteration, RETRIES))
         if iteration > 0:
             fp.write("PARENT generate_next_grid_{0} CHILD partition_grid_{1}\n".format(iteration - 1, iteration))
         #
@@ -191,6 +201,7 @@ with open(dag_fname, "w") as fp:
             tag = "{0}_{1}_{2}".format(interp_time, interp_angle, band)
             fp.write("JOB eval_interp_{0}_{1} eval_interp.sub\n".format(tag, iteration))
             fp.write("VARS eval_interp_{0}_{1} interp_time=\"{2}\" interp_angle=\"{3}\" band=\"{4}\" iteration=\"{1}\"\n".format(tag, iteration, interp_time, interp_angle, band))
+            fp.write("RETRY eval_interp_{0}_{1} {2}\n".format(tag, iteration, RETRIES))
             interp_job_list.append("eval_interp_{0}_{1}".format(tag, iteration))
         for job in interp_job_list:
             child_parent_list.append("PARENT partition_grid_{0} CHILD {1}".format(iteration, job))
@@ -199,6 +210,7 @@ with open(dag_fname, "w") as fp:
         #
         fp.write("JOB compute_posterior_{0} compute_posterior.sub\n".format(iteration))
         fp.write("VARS compute_posterior_{0} iteration=\"{0}\"\n".format(iteration))
+        fp.write("RETRY compute_posterior_{0} {1}\n".format(iteration, RETRIES))
         for job in interp_job_list:
             child_parent_list.append("PARENT {0} CHILD compute_posterior_{1}".format(job, iteration))
         #
@@ -207,5 +219,6 @@ with open(dag_fname, "w") as fp:
         fp.write("JOB generate_next_grid_{0} generate_next_grid.sub\n".format(iteration))
         fp.write("VARS generate_next_grid_{0} iteration=\"{0}\" next_iteration=\"{1}\" exponent=\"{2}\"\n".format(iteration, iteration + 1, tempering_exponents[iteration]))
         fp.write("PARENT compute_posterior_{0} CHILD generate_next_grid_{0}\n".format(iteration))
+        fp.write("RETRY generate_next_grid_{0} {1}\n".format(iteration, RETRIES))
 
     fp.write("\n".join(child_parent_list))

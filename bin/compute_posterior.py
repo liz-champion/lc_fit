@@ -53,10 +53,12 @@ for fname in os.listdir(args.interp_directory):
     if fname_split[0] != "eval":
         continue
     
+    fname_split = fname_split[2:]
+    
     # Get the time, angle, and band from the filename
-    t_interp = interpolator_times_str_to_float[fname_split[2]] # convert from the truncated time in the filename to the full time value
-    theta_interp = float(fname_split[3])
-    band = fname_split[4][0]
+    t_interp = interpolator_times_str_to_float[fname_split[0]] # convert from the truncated time in the filename to the full time value
+    theta_interp = float(fname_split[1])
+    band = fname_split[2][0]
 
     if band not in args.bands:
         continue
@@ -85,7 +87,7 @@ for i in range(theta_grid.size):
         interp_data[i][key]["mag"] = interp_data[i][key]["mag"][sorted_indices]
         interp_data[i][key]["mag_err"] = interp_data[i][key]["mag_err"][sorted_indices]
 
-# Now build a list of interpolators corresponding to each row in the grid for each band, where the averaging over angle has been done
+# Now build a list of interpolators corresponding to each row in the grid for each band, where the interpolation over angle has been done
 lc_functions = []
 for i, theta in enumerate(theta_grid):
     # Determine the angular bin

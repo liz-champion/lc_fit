@@ -15,6 +15,7 @@ parser.add_argument("--fixed-parameter", nargs=2, action="append", help="Fix a p
 parser.add_argument("--tempering-exponent", type=float, default=1., help="Exponent (between 0 and 1) to be applied to the likelihoods for the fit. Helps with the first few iterations where very few points have nonzero likelihoods")
 parser.add_argument("--n-procs-kde", type=int, default=4, help="Number of parallel processes to use for fitting KDEs when testing for the best bandwidth")
 args = parser.parse_args()
+
 #
 # Prior functions
 #
@@ -94,7 +95,7 @@ samples = np.loadtxt(args.posterior_file)
 ln_L = samples[:,0]
 ln_p = samples[:,1]
 ln_ps = samples[:,2]
-log_weights = (ln_L + ln_p - ln_ps ) * tempering_exponent
+log_weights = (ln_L + ln_p - ln_ps ) * args.tempering_exponent
 log_weights -= np.max(log_weights)
 weights = np.exp(log_weights)
 weights /= np.sum(weights) # normalize the weights
@@ -103,13 +104,16 @@ weights /= np.sum(weights) # normalize the weights
 parameters = transform(samples[:,3:])
 
 # Strip out samples with weight NaN
-parameters = parameters[np.isfinite(weights)]
-weights = weights[np.isfinite(weights)]
+parameters = parameters[np.isfinite(weights) & (weights > 0)]
+weights = weights[np.isfinite(weights) & (weights > 0)]
+
+# How many do we have left? Useful for diagnosing what's gone wrong
+print("{0} samples with finite, positive weights".format(weights.size))
 
 # We want to fit a KDE to the posterior samples so we can sample from it.
 # The fit is quite sensitive to a hyperparameter called bandwidth, which specifies the width of the (in this case, Gaussian) kernel.
 # Fortunately, scikit-learn has a built-in way to optimize this sort of hyperparameter, GridSearch.
-hyperparameter_grid = GridSearchCV(KernelDensity(kernel="gaussian"), {"bandwidth":np.logspace(-3., -0.5, 10)}, verbose=3, cv=5, n_jobs=args.n_procs_kde)
+hyperparameter_grid = GridSearchCV(KernelDensity(kernel="gaussian"), {"bandwidth":np.logspace(-3., -0.5, 10)}, cv=5, n_jobs=args.n_procs_kde)
 hyperparameter_grid.fit(parameters, sample_weight=weights)
 bandwidth = hyperparameter_grid.best_estimator_.bandwidth
 print("Using bandwidth = {0}".format(bandwidth))

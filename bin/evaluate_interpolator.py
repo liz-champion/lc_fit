@@ -18,6 +18,10 @@ parser.add_argument("--output-directory", help="File to write magnitudes to")
 parser.add_argument("--band", help="Band to evaluate")
 args = parser.parse_args()
 
+# In general this will already have been made by partition_grid.py, but it doesn't hurt to check
+if not os.path.exists(args.output_directory):
+    os.makedirs(args.output_directory)
+
 # wavelengths corresponding to bands
 wavelengths = {
         "g":477.56,
@@ -85,16 +89,20 @@ def _log_lums_to_mags(log_lums):
     mags = -48.6 - 2.5 * log_flux
     return mags
 
-# load the grid indices, exiting if it has size 0
-indices = np.loadtxt(args.index_file).astype(int)
-if indices.size == 0:
-    exit()
-
 # load the grid
-grid = np.loadtxt(args.grid_file)
+grid = np.atleast_2d(np.loadtxt(args.grid_file))
 params = np.empty((grid.shape[0], 5))
 params[:,:4] = grid[:,3:7] # take everything but angle
 params[:,4] = wavelengths[args.band]
+
+# load the grid indices if they exist, exiting if it has size 0
+if args.index_file is None: # if there is no index file, assume we're evaluating the interpolator at every index
+    indices = np.arange(grid.shape[0]).astype(int)
+else:
+    indices = np.loadtxt(args.index_file).astype(int)
+if indices.size == 0:
+    exit()
+
 params = params[indices]
 
 # location of trained interpolators
