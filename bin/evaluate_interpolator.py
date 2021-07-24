@@ -16,6 +16,7 @@ parser.add_argument("--grid-file", help="Filename for the parameter grid")
 parser.add_argument("--index-file", help="Name of file containing the indices in the grid that correspond to `--interp-angle`")
 parser.add_argument("--output-directory", help="File to write magnitudes to")
 parser.add_argument("--band", help="Band to evaluate")
+parser.add_argument("--n-samples-per-eval", type=int, default=10000, help="Number of points to evaluate in a given interpolator call (prevents the GPR from using too much memory at once)")
 args = parser.parse_args()
 
 # In general this will already have been made by partition_grid.py, but it doesn't hurt to check
@@ -115,13 +116,27 @@ interp_loc += "surrogate_data/2021_Wollaeger_TorusPeanut/"
 interp_name = interp_loc + "theta" + ("00" if args.interp_angle == "0" else args.interp_angle) + "deg/t_" + args.interp_time + "_days/model"
 model = _load_gp(interp_name)
 
-# evaluate the interpolator
-mags, mags_err = _model_predict(model, params)
+# break the evaluation into smaller pieces to avoid using too much RAM
+if params.shape[0] > args.n_samples_per_eval:
+    params_chunk_list = np.array_split(params, int(params.shape[0] / args.n_samples_per_eval))
+else:
+    params_chunk_list = [params]
+
+mags_full = np.empty(0)
+mags_err_full = np.empty(0)
+
+for chunk in params_chunk_list:
+    if chunk.size == 0:
+        continue
+    # evaluate the interpolator
+    mags, mags_err = _model_predict(model, chunk)
+    mags_full = np.append(mags_full, mags)
+    mags_err_full = np.append(mags_err_full, mags_err)
 
 # fill an array with the results
 output_array = np.empty((params.shape[0], 2))
-output_array[:,0] = mags
-output_array[:,1] = mags_err
+output_array[:,0] = mags_full
+output_array[:,1] = mags_err_full
 
 # write the output to a file
 np.savetxt(args.output_directory + ("/" if args.output_directory[-1] != "/" else "") + "eval_interp_{0}_{1}_{2}.dat".format(args.interp_time, args.interp_angle, args.band), output_array)

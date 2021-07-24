@@ -42,9 +42,9 @@ def generate_submit_file(
 
         # Don't retry on the same node you failed on
         # Thanks Richard!
-        requirements = ["TARGET.GLIDEIN_ResourceName =!= MY.MachineAttrGLIDEIN_ResourceName{0}".format(i + 1) for i in range(retries)]
-        if len(requirements) > 0:
-            fp.write("Requirements = {0}\n".format(" && \ \n".join(requirements)))
+        #requirements = ["TARGET.GLIDEIN_ResourceName =!= MY.MachineAttrGLIDEIN_ResourceName{0}".format(i + 1) for i in range(retries)]
+        #if len(requirements) > 0:
+        #    fp.write("Requirements = {0}\n".format(" && \ \n".join(requirements)))
 
         # Write the location of the executable
         fp.write("\n# Location of the executable\n")
@@ -93,7 +93,7 @@ parser.add_argument("--n-iterations", type=int, default=10, help="Number of samp
 parser.add_argument("--bands", nargs="+", help="Bands to use for PE (must be present in the light curve JSON file)")
 parser.add_argument("--distance", type=float, help="Luminosity distance (in Mpc)")
 parser.add_argument("--tempering-exponent-start", type=float, default=1., help="Starting value for tempering exponent")
-parser.add_argument("--tempering-exponent-iterations", type=float, default=5, help="Number of iterations over which to increase the tempering exponent to 1")
+parser.add_argument("--tempering-exponent-iterations", type=int, default=5, help="Number of iterations over which to increase the tempering exponent to 1")
 parser.add_argument("--npts-per-iteration", type=int, default=25000, help="Number of points to sample per iteration")
 args = parser.parse_args()
 
@@ -132,7 +132,7 @@ generate_submit_file("compute_posterior",
         "--interp-directory {0}interp_files/$(iteration)/ --output-file {0}posterior-samples_$(iteration).dat --grid-file {0}grid_$(iteration).dat --lc-file {1} --bands {2} --distance {3}".format(args.working_directory, args.lc_file, " ".join(args.bands), args.distance),
         args.working_directory,
         tag=tag,
-        memory=4,
+        memory=8,
         disk=2,
         retries=RETRIES)
 

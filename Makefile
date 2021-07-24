@@ -4,6 +4,8 @@ DATE=$(shell date +%Y%m%d)
 
 RUN_LABEL=${DATE}${LABEL}
 
+NPTS_PER_ITERATION=25000
+
 directories:
 	mkdir -p pe_runs/
 
@@ -17,7 +19,7 @@ GW170817:
 	#
 	# Generate the initial parameter grid
 	#
-	python3 ${LC_FIT_LOCATION}/bin/generate_initial_grid.py --output-file pe_runs/$@_${RUN_LABEL}/grid_0.dat
+	python3 ${LC_FIT_LOCATION}/bin/generate_initial_grid.py --output-file pe_runs/$@_${RUN_LABEL}/grid_0.dat --npts ${NPTS_PER_ITERATION}
 	#
 	# Parse the kilonova light curve data into our internal JSON format
 	#
@@ -25,7 +27,7 @@ GW170817:
 	#
 	# Set up the DAG and submit files for the PE run
 	#
-	python3 ${LC_FIT_LOCATION}/bin/dag_setup.py --working-directory ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/ --evaluate-interpolator-exe ${LC_FIT_LOCATION}/bin/evaluate_interpolator.py --partition-grid-exe ${LC_FIT_LOCATION}/bin/partition_grid.py --compute-posterior-exe ${LC_FIT_LOCATION}/bin/compute_posterior.py --generate-next-grid-exe ${LC_FIT_LOCATION}/bin/generate_next_grid.py --distance 40.0 --lc-file ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/lc_data.json --bands g r i z y J H K --tempering-exponent-start 0.005
+	python3 ${LC_FIT_LOCATION}/bin/dag_setup.py --working-directory ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/ --evaluate-interpolator-exe ${LC_FIT_LOCATION}/bin/evaluate_interpolator.py --partition-grid-exe ${LC_FIT_LOCATION}/bin/partition_grid.py --compute-posterior-exe ${LC_FIT_LOCATION}/bin/compute_posterior.py --generate-next-grid-exe ${LC_FIT_LOCATION}/bin/generate_next_grid.py --distance 40.0 --lc-file ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/lc_data.json --bands g r i z y J H K --tempering-exponent-start 0.01 --npts-per-iteration ${NPTS_PER_ITERATION}
 
 #
 # Injection parameters
@@ -33,14 +35,14 @@ GW170817:
 MEJ_DYN=0.05
 MEJ_WIND=0.01
 VEJ_DYN=0.2
-VEJ_WIND=0.08
+VEJ_WIND=0.15
 THETA=40.0
 DISTANCE=40.0
 
 TMIN=0.25
 TMAX=25.0
 NPTS=20
-ERR=0.2
+ERR=0.25
 
 test:
 	#
@@ -60,8 +62,8 @@ test:
 	#
 	# Generate the initial parameter grid
 	#
-	python3 ${LC_FIT_LOCATION}/bin/generate_initial_grid.py --output-file pe_runs/$@_${RUN_LABEL}/grid_0.dat
+	python3 ${LC_FIT_LOCATION}/bin/generate_initial_grid.py --output-file pe_runs/$@_${RUN_LABEL}/grid_0.dat --npts ${NPTS_PER_ITERATION}
 	#
 	# Set up the DAG and submit files for the PE run
 	#
-	python3 ${LC_FIT_LOCATION}/bin/dag_setup.py --working-directory ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/ --evaluate-interpolator-exe ${LC_FIT_LOCATION}/bin/evaluate_interpolator.py --partition-grid-exe ${LC_FIT_LOCATION}/bin/partition_grid.py --compute-posterior-exe ${LC_FIT_LOCATION}/bin/compute_posterior.py --generate-next-grid-exe ${LC_FIT_LOCATION}/bin/generate_next_grid.py --distance ${DISTANCE} --lc-file ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/lc_data.json --bands g r i z y J H K --tempering-exponent-start 0.0005
+	python3 ${LC_FIT_LOCATION}/bin/dag_setup.py --working-directory ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/ --evaluate-interpolator-exe ${LC_FIT_LOCATION}/bin/evaluate_interpolator.py --partition-grid-exe ${LC_FIT_LOCATION}/bin/partition_grid.py --compute-posterior-exe ${LC_FIT_LOCATION}/bin/compute_posterior.py --generate-next-grid-exe ${LC_FIT_LOCATION}/bin/generate_next_grid.py --distance ${DISTANCE} --lc-file ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/lc_data.json --bands g r i z y J H K --tempering-exponent-start 0.01 --npts-per-iteration ${NPTS_PER_ITERATION}

@@ -123,7 +123,7 @@ for i, f_dict in enumerate(lc_functions):
         # make sure to account for the distance modulus when computing residuals
         residuals = mag_interpolator(lc_data[b]["time"]) + (5. * (np.log10(args.distance * 1.e6) - 1.)) - lc_data[b]["mag"]
         model_error = mag_err_interpolator(lc_data[b]["time"])
-        lnL[i] += -0.5 * np.sum(residuals / (model_error**2 + lc_data[b]["mag_err"]**2)
+        lnL[i] += -0.5 * np.sum(residuals**2 / (model_error**2 + lc_data[b]["mag_err"]**2)
             + np.log(2. * np.pi * (model_error**2 + lc_data[b]["mag_err"]**2)))
 
 grid[:,0] = lnL

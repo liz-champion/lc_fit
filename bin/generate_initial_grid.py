@@ -85,7 +85,7 @@ if args.fixed_parameter is not None:
 grid = np.empty((args.npts, len(ordered_parameters) + 3))
 
 # The first column, for lnL, gets filled in later (by generate_posterior_samples.py), so for now make it NaN
-grid[:,0] = np.nan
+grid[:,0] = 0.
 
 # The second and third columns are the prior and sampling prior, respectively, which are the same for the initial grid.
 # The joint prior is the product of all the separate priors, so we'll set them to 1 now and multiply them by each parameter's prior in the loop.

@@ -73,7 +73,6 @@ def transform(parameters):
             transformed_parameters[:,i] = (np.log10(parameters[:,i]) - llim) / (rlim - llim)
         else:
             transformed_parameters[:,i] = (parameters[:,i] - llim) / (rlim - llim)
-    print(np.min(transformed_parameters, axis=0), np.max(transformed_parameters, axis=0))
     return transformed_parameters 
 
 def inverse_transform(parameters):
@@ -85,7 +84,6 @@ def inverse_transform(parameters):
             transformed_parameters[:,i] = 10.**(parameters[:,i] * (rlim - llim) + llim)
         else:
             transformed_parameters[:,i] = parameters[:,i] * (rlim - llim) + llim
-    print(np.min(transformed_parameters, axis=0), np.max(transformed_parameters, axis=0))
     return transformed_parameters 
 
 # Load the posterior samples
@@ -95,7 +93,8 @@ samples = np.loadtxt(args.posterior_file)
 ln_L = samples[:,0]
 ln_p = samples[:,1]
 ln_ps = samples[:,2]
-log_weights = (ln_L + ln_p - ln_ps ) * args.tempering_exponent
+ln_L = (ln_L - np.max(ln_L)) * args.tempering_exponent
+log_weights = ln_L + ln_p - ln_ps
 log_weights -= np.max(log_weights)
 weights = np.exp(log_weights)
 weights /= np.sum(weights) # normalize the weights
@@ -142,8 +141,8 @@ new_samples = new_samples[:args.npts]
 grid = np.empty((args.npts, len(ordered_parameters) + 3))
 grid[:,3:] = new_samples
 
-# The first column, for ln_L, gets filled in later (by generate_posterior_samples.py), so for now make it NaN
-grid[:,0] = np.nan
+# The first column, for ln_L, gets filled in later (by generate_posterior_samples.py), so for now make it 0
+grid[:,0] = 0.
 
 # The second and third columns are the prior and sampling prior, respectively.
 # The joint prior is the product of all the separate priors, so we'll set them to 1 now and multiply them by each parameter's prior in the loop.

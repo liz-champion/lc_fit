@@ -38,9 +38,9 @@ def generate_submit_file(
 
         # Don't retry on the same node you failed on
         # Thanks Richard!
-        requirements = ["TARGET.GLIDEIN_ResourceName =!= MY.MachineAttrGLIDEIN_ResourceName{0}".format(i + 1) for i in range(retries)]
-        if len(requirements) > 0:
-            fp.write("Requirements = {0}\n".format(" && \ \n".join(requirements)))
+        #requirements = ["TARGET.GLIDEIN_ResourceName =!= MY.MachineAttrGLIDEIN_ResourceName{0}".format(i + 1) for i in range(retries)]
+        #if len(requirements) > 0:
+        #    fp.write("Requirements = {0}\n".format(" && \ \n".join(requirements)))
 
         # Write the location of the executable
         fp.write("\n# Location of the executable\n")
