@@ -63,6 +63,9 @@ for fname in os.listdir(args.interp_directory):
     if band not in args.bands:
         continue
 
+    if indices[theta_interp].size == 0:
+        continue
+
     # Load the interpolated magnitude data
     data = np.loadtxt(fname_base + fname)
     
