@@ -1,3 +1,5 @@
 # lc fit
 
-Rewrite of the `EM_PE` code optimized for fitting interpolated kilonova light curve models on the cluster.
+A highly parallel parameter estimation tool for kilonova light curves.
+
+[Documentation](https://github.com/liz-champion/lc_fit/blob/master/doc/DOC.md)

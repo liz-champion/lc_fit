@@ -36,8 +36,8 @@ interpolator_times_str_to_float = {"{:.3f}".format(_t):_t for _t in interpolator
 
 # Set up a data structure to hold all the interpolated magnitudes.
 # This is a list with the following structure:
-#   - Each entry corresponds to a row in the grid.
-#   - Each entry is a dictionary mapping (band, interpolator_angle) to *another* dictionary.
+#   - Each element in the list corresponds to a row in the grid.
+#   - This list element is a dictionary mapping (band, interpolator_angle) to *another* dictionary.
 #       - This sub-dictionary maps the strings "time", "mag", and "mag_err" to lists containing those values
 # The point is to get all the interpolated magnitudes in one place, since they currently exist in many different files,
 # all while keeping track of which grid point each one corresponds to, its time, and its band, and to minimize lookup times going forward.

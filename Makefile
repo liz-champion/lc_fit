@@ -62,8 +62,8 @@ test:
 	#
 	# Generate the initial parameter grid
 	#
-	python3 ${LC_FIT_LOCATION}/bin/generate_initial_grid.py --output-file pe_runs/$@_${RUN_LABEL}/grid_0.dat --npts ${NPTS_PER_ITERATION} --fixed-parameter theta ${THETA}
+	python3 ${LC_FIT_LOCATION}/bin/generate_initial_grid.py --output-file pe_runs/$@_${RUN_LABEL}/grid_0.dat --npts ${NPTS_PER_ITERATION}
 	#
 	# Set up the DAG and submit files for the PE run
 	#
-	python3 ${LC_FIT_LOCATION}/bin/dag_setup.py --working-directory ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/ --evaluate-interpolator-exe ${LC_FIT_LOCATION}/bin/evaluate_interpolator.py --partition-grid-exe ${LC_FIT_LOCATION}/bin/partition_grid.py --compute-posterior-exe ${LC_FIT_LOCATION}/bin/compute_posterior.py --generate-next-grid-exe ${LC_FIT_LOCATION}/bin/generate_next_grid.py --distance ${DISTANCE} --lc-file ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/lc_data.json --bands g r i z y J H K --tempering-exponent-start 0.001 --npts-per-iteration ${NPTS_PER_ITERATION} --tempering-exponent-iterations 10 --fixed-parameters theta
+	python3 ${LC_FIT_LOCATION}/bin/dag_setup.py --working-directory ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/ --evaluate-interpolator-exe ${LC_FIT_LOCATION}/bin/evaluate_interpolator.py --partition-grid-exe ${LC_FIT_LOCATION}/bin/partition_grid.py --compute-posterior-exe ${LC_FIT_LOCATION}/bin/compute_posterior.py --generate-next-grid-exe ${LC_FIT_LOCATION}/bin/generate_next_grid.py --distance ${DISTANCE} --lc-file ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/lc_data.json --bands g r i z y J H K --tempering-exponent-start 0.01 --npts-per-iteration ${NPTS_PER_ITERATION} --tempering-exponent-iterations 10 --gaussian-sampler-iterations 0

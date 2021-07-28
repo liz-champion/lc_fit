@@ -84,7 +84,7 @@ if args.fixed_parameter is not None:
 
 grid = np.empty((args.npts, len(ordered_parameters) + 3))
 
-# The first column, for lnL, gets filled in later (by generate_posterior_samples.py), so for now make it NaN
+# The first column, for lnL, gets filled in later (by generate_posterior_samples.py), so for now make it 0
 grid[:,0] = 0.
 
 # The second and third columns are the prior and sampling prior, respectively, which are the same for the initial grid.

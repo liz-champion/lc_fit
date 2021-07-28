@@ -20,12 +20,14 @@ args = parser.parse_args()
 tex_dict = {
         "mej_dyn":"$m_{ej}$ [dyn] $(M_\\odot)$",
         "mej_wind":"$m_{ej}$ [wind] $(M_\\odot)$",
-        "log_mej_dyn":"log$_{10}( M_{D} / M_\\odot)$",
-        "log_mej_wind":"log$_{10}( M_{W} / M_\\odot)$",
+        "log_mej_dyn":"log$_{10} \left ( \\frac {M_{D}} {M_\\odot} \\right )$",
+        "log_mej_wind":"log$_{10} \left ( \\frac {M_{W}} {M_\\odot} \\right )$",
         "vej_dyn":"$v_{D} / c$",
         "vej_wind":"$v_{W} / c$",
         "theta":"$\\theta$ (deg)"
 }
+
+colors = ["black", "m", "indigo", "b", "g"]
 
 # Figure out what parameters we're plotting
 parameters_to_plot = []
@@ -91,6 +93,8 @@ for i, sample_dict in enumerate(posterior_samples):
     weights = weights[mask]
     print("{0} samples with weight > 0".format(weights.size))
     # Plot the samples
-    fig = corner.corner(to_plot, weights=weights, fig=fig, truths=truths, plot_datapoints=False, labels=parameter_labels, label_kwargs={"fontsize":16})
 
+    fig = corner.corner(to_plot, weights=weights, fig=fig, truths=truths, plot_datapoints=False, labels=parameter_labels, label_kwargs={"fontsize":16}, color=colors[i % len(colors)], smooth=0.1, quantiles=[0.16, 0.5, 0.84], show_titles=True, range=([0.999] * len(parameters_to_plot)), truth_color="red")
+
+plt.tight_layout()
 plt.savefig(args.output_file)

@@ -117,7 +117,7 @@ sampler = None
 if args.gaussian_sampler:
     # Compute the mean and covariance of our data, adding a bit to the diagonal of the covariance matrix to 
     mu = np.average(parameters, weights=weights, axis=0)
-    cov = np.cov(parameters, rowvar=False, aweights=weights) + np.eye(mu.size) * 0.1
+    cov = np.cov(parameters, rowvar=False, aweights=weights) + np.eye(mu.size) * 0.1 # FIXME probably there should be some systematic way of choosing this instead of hard-coding to 0.1
 
     if np.linalg.matrix_rank(cov) < cov.shape[0]:
         # If this happens, we got a singular matrix, which will cause the sampling to fail.
@@ -190,10 +190,10 @@ grid[:,1] = 0.
 for i, _parameter in enumerate(ordered_parameters):
     grid[:,1] += np.log(prior_functions[_parameter](grid[:,i + 3]))
 
-# Compute the sampling prior from the Gaussian or (note that both return log probability)
+# Compute the sampling prior from the Gaussian or KDE (note that both return log probability)
 # NOTE regarding normalization: technically, these sampling priors are not normalized since neither the Gaussian fit nor the KDE cares about the bounds of our parameter space.
 # However, it doesn't actually matter - these probabilities are used to calculate sample weights that are then normalized, meaning any constant factor is inconsequential.
-grid[:,2] = sampling_prior(new_samples)
+grid[:,2] = sampling_prior(transform(new_samples))
 
 # Save the grid
 np.savetxt(args.output_file, grid, header=("ln(L) ln(p) ln(ps) " + " ".join(ordered_parameters)))
