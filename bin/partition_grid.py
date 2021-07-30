@@ -25,7 +25,7 @@ indices_90 = np.where(75. <= theta)[0]
 
 fname = args.output_directory + ("/" if args.output_directory[-1] != "/" else "") + "indices"
 
-np.savetxt("{0}_{1}.dat".format(fname, 0), indices_0)
+np.savetxt("{0}_{1}.dat".format(fname, 0), indices_0, fmt="%d")
 np.savetxt("{0}_{1}.dat".format(fname, 30), indices_30)
 np.savetxt("{0}_{1}.dat".format(fname, 45), indices_45)
 np.savetxt("{0}_{1}.dat".format(fname, 60), indices_60)

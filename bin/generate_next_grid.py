@@ -117,7 +117,7 @@ sampler = None
 if args.gaussian_sampler:
     # Compute the mean and covariance of our data, adding a bit to the diagonal of the covariance matrix to 
     mu = np.average(parameters, weights=weights, axis=0)
-    cov = np.cov(parameters, rowvar=False, aweights=weights) + np.eye(mu.size) * 0.1 # FIXME probably there should be some systematic way of choosing this instead of hard-coding to 0.1
+    cov = np.cov(parameters, rowvar=False, aweights=weights)# + np.eye(mu.size) * 0.1 # FIXME probably there should be some systematic way of choosing this instead of hard-coding to 0.1
 
     if np.linalg.matrix_rank(cov) < cov.shape[0]:
         # If this happens, we got a singular matrix, which will cause the sampling to fail.
@@ -152,7 +152,7 @@ else:
     # Make a function for the sampling prior
     sampling_prior = lambda x: kde.score_samples(x)
 
-# Now we want to generate new samples being sure to thow out points that lie outside the bounds
+# Now we want to generate new samples, being sure to thow out points that lie outside the bounds
 new_samples = np.empty((0, len(ordered_parameters) - len(fixed_parameters)))
 llim_array = np.array([limits[_parameter][0] for _parameter in ordered_parameters if _parameter not in fixed_parameters])
 rlim_array = np.array([limits[_parameter][1] for _parameter in ordered_parameters if _parameter not in fixed_parameters])
@@ -174,7 +174,8 @@ grid = np.empty((args.npts, len(ordered_parameters) + 3))
 j = 0
 for i, _parameter in enumerate(ordered_parameters):
     if _parameter in fixed_parameters:
-        grid[:,i + 3] = original_parameters[:,i][0]
+        grid[:,i + 3] = original_parameters[:,i][0] # Take the first value from the corresponding column in the original samples rather than copying the whole column,
+                                                    # since in principle the new grid could have a different number of rows than the input.
     else:
         grid[:,i + 3] = new_samples[:,j]
         j += 1
@@ -193,7 +194,9 @@ for i, _parameter in enumerate(ordered_parameters):
 # Compute the sampling prior from the Gaussian or KDE (note that both return log probability)
 # NOTE regarding normalization: technically, these sampling priors are not normalized since neither the Gaussian fit nor the KDE cares about the bounds of our parameter space.
 # However, it doesn't actually matter - these probabilities are used to calculate sample weights that are then normalized, meaning any constant factor is inconsequential.
-grid[:,2] = sampling_prior(transform(new_samples))
+grid[:,2] = sampling_prior(transform(new_samples)) # Side note for future readers: this line cost me several days of effort searching for a bug.
+                                                   # I forgot to transform the samples before calculating the sampling prior (since the Gaussian/KDE was fit to transformed data),
+                                                   # meaning I was getting horrible garbage for a reason that took me way too long to figure out. *sigh*...
 
 # Save the grid
 np.savetxt(args.output_file, grid, header=("ln(L) ln(p) ln(ps) " + " ".join(ordered_parameters)))

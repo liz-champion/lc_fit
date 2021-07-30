@@ -18,7 +18,7 @@ args = parser.parse_args()
 # Load the files containing the grid indices corresponding to each angle
 indices_fname_base = args.interp_directory + ("/" if args.interp_directory[-1] != "/" else "") + "indices_"
 interp_angles = [0., 30., 45., 60., 75., 90.]
-indices = {_theta_interp:np.loadtxt(indices_fname_base + str(int(_theta_interp)) + ".dat").astype(int) for _theta_interp in interp_angles}
+indices = {_theta_interp:np.loadtxt(indices_fname_base + str(int(_theta_interp)) + ".dat", ndmin=1).astype(int) for _theta_interp in interp_angles}
 
 # Load the grid
 grid = np.loadtxt(args.grid_file)
