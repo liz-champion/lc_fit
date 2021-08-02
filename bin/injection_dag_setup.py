@@ -1,7 +1,7 @@
 #! /usr/bin/env python3
 
 #
-# Generates Condor .sub and .dag files for the iterative workflow.
+# Generates Condor .sub and .dag files for generating test data.
 # A lot of this is adapted from Vera's code.
 #
 
@@ -41,6 +41,16 @@ def generate_submit_file(
         #requirements = ["TARGET.GLIDEIN_ResourceName =!= MY.MachineAttrGLIDEIN_ResourceName{0}".format(i + 1) for i in range(retries)]
         #if len(requirements) > 0:
         #    fp.write("Requirements = {0}\n".format(" && \ \n".join(requirements)))
+        #requirements = ["target.machine =!= MachineAttrMachine{0}".format(i + 1) for i in range(retries)]
+        #if len(requirements) > 0:
+        #    fp.write("requirements = {0}\n".format(" && \ \n".join(requirements)))
+        
+        if retries > 0:
+            fp.write("\njob_machine_attrs = Machine\n")
+            fp.write("job_machine_attrs_history_length = {0}\n".format(retries))
+            retries_strings = ["target.machine =!= MachineAttrMachine{0}".format(i + 1) for i in range(retries)]
+            fp.write("requirements = " + " && ".join(retries_strings) + "\n")
+
 
         # Write the location of the executable
         fp.write("\n# Location of the executable\n")
@@ -58,7 +68,7 @@ def generate_submit_file(
 
         fp.write("\ngetenv = True\n")
 
-        fp.write("\ninitialdir = {0}\n".format(working_directory))
+        #fp.write("\ninitialdir = {0}\n".format(working_directory))
         
         # Arguments
         fp.write("\n# Arguments:\n")

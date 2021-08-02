@@ -27,7 +27,7 @@ GW170817:
 	#
 	# Set up the DAG and submit files for the PE run
 	#
-	python3 ${LC_FIT_LOCATION}/bin/dag_setup.py --working-directory ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/ --evaluate-interpolator-exe ${LC_FIT_LOCATION}/bin/evaluate_interpolator.py --partition-grid-exe ${LC_FIT_LOCATION}/bin/partition_grid.py --compute-posterior-exe ${LC_FIT_LOCATION}/bin/compute_posterior.py --generate-next-grid-exe ${LC_FIT_LOCATION}/bin/generate_next_grid.py --distance 40.0 --lc-file ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/lc_data.json --bands g r i z y J H K --tempering-exponent-start 0.01 --tempering-exponent-iterations 8 --npts-per-iteration ${NPTS_PER_ITERATION} --gaussian-sampler-iterations 5
+	python3 ${LC_FIT_LOCATION}/bin/dag_setup.py --working-directory ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/ --evaluate-interpolator-exe ${LC_FIT_LOCATION}/bin/evaluate_interpolator.py --partition-grid-exe ${LC_FIT_LOCATION}/bin/partition_grid.py --compute-posterior-exe ${LC_FIT_LOCATION}/bin/compute_posterior.py --generate-next-grid-exe ${LC_FIT_LOCATION}/bin/generate_next_grid.py --distance 40.0 --lc-file ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/lc_data.json --bands g r i z y J H K --tempering-exponent-start 0.001 --tempering-exponent-iterations 8 --npts-per-iteration ${NPTS_PER_ITERATION} --gaussian-sampler-iterations 0
 
 #
 # Injection parameters
@@ -36,7 +36,7 @@ MEJ_DYN=0.05
 MEJ_WIND=0.01
 VEJ_DYN=0.2
 VEJ_WIND=0.15
-THETA=40.0
+THETA=20.0
 DISTANCE=40.0
 
 TMIN=0.25
@@ -66,4 +66,4 @@ test:
 	#
 	# Set up the DAG and submit files for the PE run
 	#
-	python3 ${LC_FIT_LOCATION}/bin/dag_setup.py --working-directory ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/ --evaluate-interpolator-exe ${LC_FIT_LOCATION}/bin/evaluate_interpolator.py --partition-grid-exe ${LC_FIT_LOCATION}/bin/partition_grid.py --compute-posterior-exe ${LC_FIT_LOCATION}/bin/compute_posterior.py --generate-next-grid-exe ${LC_FIT_LOCATION}/bin/generate_next_grid.py --distance ${DISTANCE} --lc-file ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/lc_data.json --bands g r i z y J H K --tempering-exponent-start 0.01 --npts-per-iteration ${NPTS_PER_ITERATION} --tempering-exponent-iterations 8 --gaussian-sampler-iterations 5
+	python3 ${LC_FIT_LOCATION}/bin/dag_setup.py --working-directory ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/ --evaluate-interpolator-exe ${LC_FIT_LOCATION}/bin/evaluate_interpolator.py --partition-grid-exe ${LC_FIT_LOCATION}/bin/partition_grid.py --compute-posterior-exe ${LC_FIT_LOCATION}/bin/compute_posterior.py --generate-next-grid-exe ${LC_FIT_LOCATION}/bin/generate_next_grid.py --distance ${DISTANCE} --lc-file ${LC_FIT_LOCATION}/pe_runs/$@_${RUN_LABEL}/lc_data.json --bands g r i z y J H K --tempering-exponent-start 0.01 --npts-per-iteration ${NPTS_PER_ITERATION} --tempering-exponent-iterations 5

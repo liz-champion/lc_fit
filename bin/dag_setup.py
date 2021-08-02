@@ -10,10 +10,6 @@ import json
 import os
 import argparse
 
-#
-# Objects representing individual condor jobs and the DAG (note: DAG = "Directed Acyclic Graph")
-#
-
 # NOTE: If you change this function, make sure you change it in injection_dag_setup.py too.
 # I know I should import this function from one place, but I wanted all these scripts to be completely independent.
 def generate_submit_file(
@@ -45,7 +41,16 @@ def generate_submit_file(
         #requirements = ["TARGET.GLIDEIN_ResourceName =!= MY.MachineAttrGLIDEIN_ResourceName{0}".format(i + 1) for i in range(retries)]
         #if len(requirements) > 0:
         #    fp.write("Requirements = {0}\n".format(" && \ \n".join(requirements)))
+        #requirements = ["target.machine =!= MachineAttrMachine{0}".format(i + 1) for i in range(retries)]
+        #if len(requirements) > 0:
+        #    fp.write("requirements = {0}\n".format(" && \ \n".join(requirements)))
 
+        if retries > 0:
+            fp.write("\njob_machine_attrs = Machine\n")
+            fp.write("job_machine_attrs_history_length = {0}\n".format(retries))
+            retries_strings = ["target.machine =!= MachineAttrMachine{0}".format(i + 1) for i in range(retries)]
+            fp.write("requirements = " + " && ".join(retries_strings) + "\n")
+        
         # Write the location of the executable
         fp.write("\n# Location of the executable\n")
         fp.write("executable = {0}\n".format(exe))
@@ -62,7 +67,7 @@ def generate_submit_file(
 
         fp.write("\ngetenv = True\n")
 
-        fp.write("\ninitialdir = {0}\n".format(working_directory))
+        #fp.write("\ninitialdir = {0}\n".format(working_directory))
         
         # Arguments
         fp.write("\n# Arguments:\n")
@@ -95,7 +100,7 @@ parser.add_argument("--distance", type=float, help="Luminosity distance (in Mpc)
 parser.add_argument("--tempering-exponent-start", type=float, default=1., help="Starting value for tempering exponent")
 parser.add_argument("--tempering-exponent-iterations", type=int, default=5, help="Number of iterations over which to increase the tempering exponent to 1")
 parser.add_argument("--npts-per-iteration", type=int, default=25000, help="Number of points to sample per iteration")
-parser.add_argument("--gaussian-sampler-iterations", type=int, default=10, help="Number of iterations to use a simple Gaussian fit for sampling rather than a KDE")
+parser.add_argument("--gaussian-sampler-iterations", type=int, default=0, help="Number of iterations to use a simple Gaussian fit for sampling rather than a KDE")
 parser.add_argument("--fixed-parameters", nargs="+", help="Parameters that stay fixed to their grid values")
 args = parser.parse_args()
 
@@ -105,7 +110,7 @@ fixed_parameters = args.fixed_parameters if args.fixed_parameters is not None el
 # Generate our .sub files
 #
 
-RETRIES = 4 # For now just hard-code a number of retries
+RETRIES = 8 # For now just hard-code a number of retries
 
 # partition_grid.sub
 tag = "$(iteration)"
@@ -125,8 +130,8 @@ generate_submit_file("eval_interp",
         "--interp-angle $(interp_angle) --interp-time $(interp_time) --band $(band) --grid-file {0}grid_$(iteration).dat --index-file {0}interp_files/$(iteration)/indices_$(interp_angle).dat --output-directory {0}interp_files/$(iteration)/".format(args.working_directory),
         args.working_directory,
         tag=tag,
-        memory=16,
-        disk=4,
+        memory=8,
+        disk=2,
         retries=RETRIES)
 
 # compute_posterior.sub.
