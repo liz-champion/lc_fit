@@ -9,7 +9,7 @@ parser.add_argument("--fixed-parameter", nargs=2, action="append", help="Fix a p
 parser.add_argument("--set-limit", nargs=3, action="append", help="Set a parameter's limits to something other than the default, e.g. `--set-limit mej_dyn 0.01, 0.05`")
 parser.add_argument("--npts", type=int, default=25000, help="Number of points to use in the grid")
 parser.add_argument("--output-file", help="Filename to save grid to")
-# TODO: implement --gaussian-prior option
+parser.add_argument("--gaussian-prior", action="append", nargs=3, help="Give a parameter a Gaussian prior, specifying the mean and standard deviation; for example, `--gaussian-prior theta 20.0 5.0`")
 args = parser.parse_args()
 
 #
@@ -54,13 +54,14 @@ if args.set_limit is not None:
     for [_parameter, _llim, _rlim] in args.set_limit:
         limits[_parameter] = [float(_llim), float(_rlim)]
 
+
 # Specify each parameter's prior
 prior_functions = {
-        "mej_dyn":lambda n: log_uniform(*limits["mej_dyn"], n),
-        "vej_dyn":lambda n: uniform(*limits["vej_dyn"], n),
-        "mej_wind":lambda n: log_uniform(*limits["mej_wind"], n),
-        "vej_wind":lambda n: uniform(*limits["vej_wind"], n),
-        "theta":lambda n: uniform(*limits["theta"], n)
+        "mej_dyn":lambda x: log_uniform(*limits["mej_dyn"], x),
+        "vej_dyn":lambda x: uniform(*limits["vej_dyn"], x),
+        "mej_wind":lambda x: log_uniform(*limits["mej_wind"], x),
+        "vej_wind":lambda x: uniform(*limits["vej_wind"], x),
+        "theta":lambda x: uniform(*limits["theta"], x)
 }
 
 # Specify each parameter's prior sampling function
@@ -77,6 +78,14 @@ fixed_parameters = {}
 if args.fixed_parameter is not None:
     for [_parameter, _val] in args.fixed_parameter:
         fixed_parameters[_parameter] = float(_val)
+
+# Gaussian priors
+if args.gaussian_prior is not None:
+    for [_parameter, _mu, _sigma] in args.gaussian_prior:
+        _mu, _sigma = float(_mu), float(_sigma)
+        a, b = (limits[_parameter][0] - _mu) / _sigma, (limits[_parameter][1] - _mu) / _sigma
+        prior_functions[_parameter] = lambda x: gaussian(a, b, _mu, _sigma, x)
+        prior_sampling_functions[_parameter] = lambda n: sample_gaussian(a, b, _mu, _sigma, n)
 
 #
 # Generate the grid

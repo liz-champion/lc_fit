@@ -13,8 +13,8 @@ parser.add_argument("--npts", type=int, default=10000, help="Number of points to
 parser.add_argument("--set-limit", nargs=3, action="append", help="Set a parameter's limits to something other than the default, e.g. `--set-limit mej_dyn 0.01, 0.05`")
 parser.add_argument("--tempering-exponent", type=float, default=1., help="Exponent (between 0 and 1) to be applied to the likelihoods for the fit. Helps with the first few iterations where very few points have nonzero likelihoods")
 parser.add_argument("--n-procs-kde", type=int, default=4, help="Number of parallel processes to use for fitting KDEs when testing for the best bandwidth")
-parser.add_argument("--gaussian-sampler", action="store_true", help="Use a multivariate Gaussian fit to the data to generate the next grid rather than a KDE")
 parser.add_argument("--fixed-parameters", nargs="+", help="Parameters that stay fixed to their grid values")
+parser.add_argument("--gaussian-prior", action="append", nargs=3, help="Give a parameter a Gaussian prior, specifying the mean and standard deviation; for example, `--gaussian-prior theta 20.0 5.0`")
 args = parser.parse_args()
 
 #
@@ -56,6 +56,13 @@ prior_functions = {
         "vej_wind":lambda n: uniform(*limits["vej_wind"], n),
         "theta":lambda n: uniform(*limits["theta"], n)
 }
+
+# Gaussian priors
+if args.gaussian_prior is not None:
+    for [_parameter, _mu, _sigma] in args.gaussian_prior:
+        _mu, _sigma = float(_mu), float(_sigma)
+        a, b = (limits[_parameter][0] - _mu) / _sigma, (limits[_parameter][1] - _mu) / _sigma
+        prior_functions[_parameter] = lambda x: gaussian(a, b, _mu, _sigma, x)
 
 # Convert masses to log10(mass), then scale parameters to be in the interval [0, 1]
 # This function also removes fixed parameters from the returned array
@@ -113,44 +120,24 @@ weights = weights[np.isfinite(weights) & (weights > 0)]
 # How many do we have left? Useful for diagnosing what's gone wrong
 print("{0} samples with finite, positive weights".format(weights.size))
 
-sampler = None
-if args.gaussian_sampler:
-    # Compute the mean and covariance of our data, adding a bit to the diagonal of the covariance matrix to 
-    mu = np.average(parameters, weights=weights, axis=0)
-    cov = np.cov(parameters, rowvar=False, aweights=weights)# + np.eye(mu.size) * 0.1 # FIXME probably there should be some systematic way of choosing this instead of hard-coding to 0.1
+# We want to fit a KDE to the posterior samples so we can sample from it.
+# The fit is quite sensitive to a hyperparameter called bandwidth, which specifies the width of the (in this case, Gaussian) kernel.
+# Fortunately, scikit-learn has a built-in way to optimize this sort of hyperparameter, GridSearch.
+hyperparameter_grid = GridSearchCV(KernelDensity(kernel="gaussian"), {"bandwidth":np.logspace(-4., 0., 20)}, cv=5, n_jobs=args.n_procs_kde)
+hyperparameter_grid.fit(parameters, sample_weight=weights)
+bandwidth = hyperparameter_grid.best_estimator_.bandwidth
+print("Using bandwidth = {0}".format(bandwidth))
 
-    if np.linalg.matrix_rank(cov) < cov.shape[0]:
-        # If this happens, we got a singular matrix, which will cause the sampling to fail.
-        print("Got singular matrix, stripping out off-diagonal elements")
-        diag = np.diag(cov)
-        cov = np.zeros(cov.shape)
-        np.fill_diagonal(cov, diag)
+# Since GridSearch splits the data into train and test sets, we don't want to use the trained KDEs from this process.
+# Instead, take the optimal bandwidth and retrain with it on the full data set
+kde = KernelDensity(kernel="gaussian", bandwidth=bandwidth)
+kde.fit(parameters, sample_weight=weights)
 
-    # Make a function for sampling new points
-    sampler = lambda n: multivariate_normal.rvs(mean=mu, cov=cov, size=n)
+# Make a function for sampling new points
+sampler = kde.sample
 
-    # Make a function for the sampling prior
-    sampling_prior = lambda x: multivariate_normal.logpdf(x, mean=mu, cov=cov)
-
-else:
-    # We want to fit a KDE to the posterior samples so we can sample from it.
-    # The fit is quite sensitive to a hyperparameter called bandwidth, which specifies the width of the (in this case, Gaussian) kernel.
-    # Fortunately, scikit-learn has a built-in way to optimize this sort of hyperparameter, GridSearch.
-    hyperparameter_grid = GridSearchCV(KernelDensity(kernel="gaussian"), {"bandwidth":np.logspace(-3., -0.5, 10)}, cv=5, n_jobs=args.n_procs_kde)
-    hyperparameter_grid.fit(parameters, sample_weight=weights)
-    bandwidth = hyperparameter_grid.best_estimator_.bandwidth
-    print("Using bandwidth = {0}".format(bandwidth))
-
-    # Since GridSearch splits the data into train and test sets, we don't want to use the trained KDEs from this process.
-    # Instead, take the optimal bandwidth and retrain with it on the full data set
-    kde = KernelDensity(kernel="gaussian", bandwidth=bandwidth)
-    kde.fit(parameters, sample_weight=weights)
-
-    # Make a function for sampling new points
-    sampler = kde.sample
-
-    # Make a function for the sampling prior
-    sampling_prior = lambda x: kde.score_samples(x)
+# Make a function for the sampling prior
+sampling_prior = lambda x: kde.score_samples(x)
 
 # Now we want to generate new samples, being sure to thow out points that lie outside the bounds
 new_samples = np.empty((0, len(ordered_parameters) - len(fixed_parameters)))

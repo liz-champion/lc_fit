@@ -100,8 +100,8 @@ parser.add_argument("--distance", type=float, help="Luminosity distance (in Mpc)
 parser.add_argument("--tempering-exponent-start", type=float, default=1., help="Starting value for tempering exponent")
 parser.add_argument("--tempering-exponent-iterations", type=int, default=5, help="Number of iterations over which to increase the tempering exponent to 1")
 parser.add_argument("--npts-per-iteration", type=int, default=25000, help="Number of points to sample per iteration")
-parser.add_argument("--gaussian-sampler-iterations", type=int, default=0, help="Number of iterations to use a simple Gaussian fit for sampling rather than a KDE")
 parser.add_argument("--fixed-parameters", nargs="+", help="Parameters that stay fixed to their grid values")
+parser.add_argument("--generate-next-grid-args", default="", help="Extra command line arguments to pass to `generate_next_grid.py`")
 args = parser.parse_args()
 
 fixed_parameters = args.fixed_parameters if args.fixed_parameters is not None else []
@@ -110,7 +110,7 @@ fixed_parameters = args.fixed_parameters if args.fixed_parameters is not None el
 # Generate our .sub files
 #
 
-RETRIES = 8 # For now just hard-code a number of retries
+RETRIES = 4 # For now just hard-code a number of retries
 
 # partition_grid.sub
 tag = "$(iteration)"
@@ -149,7 +149,7 @@ generate_submit_file("compute_posterior",
 tag = "$(iteration)"
 generate_submit_file("generate_next_grid",
         args.generate_next_grid_exe,
-        "--posterior-file {0}posterior-samples_$(iteration).dat --output-file {0}grid_$(next_iteration).dat --tempering-exponent $(exponent) --npts {1} $(sampler_argument) $(fixed_parameters)".format(args.working_directory, args.npts_per_iteration),
+        "--posterior-file {0}posterior-samples_$(iteration).dat --output-file {0}grid_$(next_iteration).dat --tempering-exponent $(exponent) --npts {1} {2} $(fixed_parameters)".format(args.working_directory, args.npts_per_iteration, args.generate_next_grid_args),
         args.working_directory,
         tag=tag,
         memory=4,
@@ -225,16 +225,12 @@ with open(dag_fname, "w") as fp:
         #
         # DAG node to generate the next grid
         #
-        if args.gaussian_sampler_iterations is not None and iteration < args.gaussian_sampler_iterations:
-            sampler_argument = "--gaussian-sampler"
-        else:
-            sampler_argument = ""
         if len(fixed_parameters) > 0:
             fixed_parameters_argument = "--fixed-parameters {0}".format(" ".join(fixed_parameters))
         else:
             fixed_parameters_argument = ""
         fp.write("JOB generate_next_grid_{0} generate_next_grid.sub\n".format(iteration))
-        fp.write("VARS generate_next_grid_{0} iteration=\"{0}\" next_iteration=\"{1}\" exponent=\"{2}\" sampler_argument=\"{3}\" fixed_parameters=\"{4}\"\n".format(iteration, iteration + 1, tempering_exponents[iteration], sampler_argument, fixed_parameters_argument))
+        fp.write("VARS generate_next_grid_{0} iteration=\"{0}\" next_iteration=\"{1}\" exponent=\"{2}\" fixed_parameters=\"{3}\"\n".format(iteration, iteration + 1, tempering_exponents[iteration], fixed_parameters_argument))
         fp.write("PARENT compute_posterior_{0} CHILD generate_next_grid_{0}\n".format(iteration))
         fp.write("RETRY generate_next_grid_{0} {1}\n".format(iteration, RETRIES))
 
